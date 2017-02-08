@@ -1,4 +1,6 @@
-import serial, openpyxl, time
+import serial, openpyxl, time, msvcrt
+
+track_recording = True
 
 # Commands
 SET_REG = b'02'
@@ -36,15 +38,42 @@ print(port.read(32)[8])
 port.write(SET_REG + START_CONFIG + b'00' + b'\r') # Continuous conversion mode
 print(port.read(32)[8])
 
-
-while True:
+def read_ldata():
+    global port
     ldata = 0x0000
     port.write(READ_REG + LHR_DATA_LSB + b'\r')
     ldata = ldata + port.read(32)[8]
     port.write(READ_REG + LHR_DATA_MID + b'\r')
     ldata = ldata + port.read(32)[8] * 256
     port.write(READ_REG + LHR_DATA_MSB + b'\r')
-    ldata = ldata + port.read(32)[8] * 256 * 256 
-    print(ldata)
-    time.sleep(0.05)
+    ldata = ldata + port.read(32)[8] * 256 * 256
+    return ldata
 
+# asks whether a key has been acquired
+def kbfunc():
+    #this is boolean for whether the keyboard has bene hit
+    x = msvcrt.kbhit()
+    if x:
+        #getch acquires the character encoded in binary ASCII
+        ret = msvcrt.getch()
+    else:
+        ret = False
+    return ret
+
+while track_recording:
+	raw_data = []
+	filename = input('Enter file name: ')
+	input('Press enter to star...')
+	print('Press \'s\' to stop')
+	while True:
+		raw_data.append(read_ldata())
+		time.sleep(0.05)
+		key = kbfunc()
+		if key != False:
+			if key == b's':
+				break;
+	wb = openpyxl.Workbook()
+	ws = wb.active
+	for i in range(len(raw_data)):
+		ws.append([raw_data[i]])
+	wb.save(filename + '.xlsx')
