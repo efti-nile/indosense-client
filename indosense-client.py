@@ -1,4 +1,4 @@
-import serial, openpyxl, time, msvcrt, os
+import serial, openpyxl, time, msvcrt, os, collections
 
 track_recording = True
 monitoring = True
@@ -65,14 +65,23 @@ def kbfunc():
     return ret
 
 while True:
-	mode = input('Input \'m\' to enter monitor mod.\nInput \'r\' to enter monitor mod.\n')
+	mode = input('Input \'m\' to enter monitor mod.\nInput \'r\' to enter monitor mod. \
+	\nInput \'v\' to monitor standard deviation.\n')
 	
 	if mode == 'm':
 		monitoring = True
+		standev = False
+		recording = False
+		print('Press \'s\' to stop')
+	elif mode == 'v':
+		cb = collections.deque(maxlen = 20)
+		monitoring = False
+		standev = True
 		recording = False
 		print('Press \'s\' to stop')
 	elif mode == 'r':
 		monitoring = False
+		standev = False
 		recording = True
 	else:
 		continue
@@ -84,6 +93,19 @@ while True:
 		if key != False:
 			if key == b's':
 				break;
+
+	while standev:
+		time.sleep(0.2)
+		cb.append(read_ldata())
+		if len(cb) == 20:
+			m = sum(cb) / 20
+			sd = sum([pow(s - m, 2) for s in cb]) / 20
+			print('STAND. DEV. = ' + str(sd))
+		key = kbfunc()
+		if key != False:
+			if key == b's':
+				break;
+		
 	
 	if recording:
 		raw_data = []
