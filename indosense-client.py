@@ -2,6 +2,7 @@ import serial, openpyxl, time, msvcrt, os, collections
 
 track_recording = True
 monitoring = True
+x4_samplerate = False
 
 MATLAB_FOLDER = 'E:/work/indosens/'
 MATLAB_SCRIPT_NAME = 'static_meas.m'
@@ -11,6 +12,8 @@ SET_REG = b'02'
 READ_REG = b'03'
 
 # Registers
+LHR_RCOUNT_LSB = b'30'
+LHR_RCOUNT_MSB = b'31'
 LHR_DATA_LSB = b'38'
 LHR_DATA_MID = b'39'
 LHR_DATA_MSB = b'3A'
@@ -38,6 +41,9 @@ port.write(SET_REG + D_CONFIG + b'01' + b'\r') # Don't track amplitude
 
 port.write(SET_REG + LHR_CONFIG + b'03' + b'\r') # F_div = 8
 #print(port.read(32)[8])
+
+if x4_samplerate:
+    port.write(SET_REG + LHR_RCOUNT_MSB + b'07' + b'\r') # sample rate to 
 
 port.write(SET_REG + START_CONFIG + b'00' + b'\r') # Continuous conversion mode
 #print(port.read(32)[8])
@@ -74,7 +80,7 @@ while True:
 		recording = False
 		print('Press \'s\' to stop')
 	elif mode == 'v':
-		cb = collections.deque(maxlen = 20)
+		cb = collections.deque(maxlen = 100)
 		monitoring = False
 		standev = True
 		recording = False
@@ -97,9 +103,9 @@ while True:
 	while standev:
 		time.sleep(0.2)
 		cb.append(read_ldata())
-		if len(cb) == 20:
-			m = sum(cb) / 20
-			sd = sum([pow(s - m, 2) for s in cb]) / 20
+		if len(cb) == 100:
+			m = sum(cb) / 100
+			sd = sum([pow(s - m, 2) for s in cb]) / 100
 			print('STAND. DEV. = ' + str(sd))
 		key = kbfunc()
 		if key != False:
@@ -125,10 +131,10 @@ while True:
 		port.flush()
 		while True:
 			raw_data.append(read_ldata())
-			time.sleep(0.15)
+			time.sleep(0.001)
 			key = kbfunc()
 			count = count + 1
-			if count % 5 == 0:
+			if count % 1280 == 0:
 				print('LHR_DATA = ' + str(raw_data[-1]))
 			if key != False:
 				if key == b's':
